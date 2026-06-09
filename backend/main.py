@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 from typing import Optional
 import uuid
 import shutil
@@ -9,25 +8,7 @@ import os
 from models import Item, FeedResponse, Board
 from data import items, boards
 
-fclip_model = None
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global fclip_model
-    try:
-        from transformers import CLIPProcessor, CLIPModel
-        model_name = "patrickjohncyh/fashion-clip"
-        fclip_model = {
-            "model": CLIPModel.from_pretrained(model_name),
-            "processor": CLIPProcessor.from_pretrained(model_name)
-        }
-        print("FashionCLIP model loaded at startup")
-    except Exception as e:
-        print(f"FashionCLIP not available at startup: {e}")
-        fclip_model = {"error": str(e)}
-    yield
-
-app = FastAPI(title="Gradient API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Gradient API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,9 +21,25 @@ app.add_middleware(
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+fclip_model = None
+
 def get_model():
     global fclip_model
+    if fclip_model is None:
+        try:
+            from transformers import CLIPProcessor, CLIPModel
+            model_name = "patrickjohncyh/fashion-clip"
+            fclip_model = {
+                "model": CLIPModel.from_pretrained(model_name),
+                "processor": CLIPProcessor.from_pretrained(model_name)
+            }
+        except Exception as e:
+            fclip_model = {"error": str(e)}
     return fclip_model
+
+def clear_model():
+    global fclip_model
+    fclip_model = None
 
 ITEM_LIST = list(items.values())
 
